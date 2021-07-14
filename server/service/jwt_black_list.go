@@ -1,11 +1,13 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"gin-vue-admin/global"
 	"gin-vue-admin/model"
-	"gorm.io/gorm"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 //@author: [piexlmax](https://github.com/piexlmax)
@@ -26,7 +28,8 @@ func JsonInBlacklist(jwtList model.JwtBlacklist) (err error) {
 //@return: bool
 
 func IsBlacklist(jwt string) bool {
-	isNotFound := errors.Is(global.GVA_DB.Where("jwt = ?", jwt).First(&model.JwtBlacklist{}).Error, gorm.ErrRecordNotFound)
+	err := global.GVA_DB.Where("jwt = ?", jwt).First(&model.JwtBlacklist{}).Error
+	isNotFound := errors.Is(err, gorm.ErrRecordNotFound)
 	return !isNotFound
 }
 
@@ -37,19 +40,19 @@ func IsBlacklist(jwt string) bool {
 //@return: err error, redisJWT string
 
 func GetRedisJWT(userName string) (err error, redisJWT string) {
-	redisJWT, err = global.GVA_REDIS.Get(userName).Result()
+	redisJWT, err = global.GVA_REDIS.Get(context.Background(), userName).Result()
 	return err, redisJWT
 }
 
 //@author: [piexlmax](https://github.com/piexlmax)
 //@function: SetRedisJWT
 //@description: jwt存入redis并设置过期时间
-//@param: userName string
-//@return: err error, redisJWT string
+//@param: jwt string, userName string
+//@return: err error
 
 func SetRedisJWT(jwt string, userName string) (err error) {
 	// 此处过期时间等于jwt过期时间
 	timer := time.Duration(global.GVA_CONFIG.JWT.ExpiresTime) * time.Second
-	err = global.GVA_REDIS.Set(userName, jwt, timer).Err()
+	err = global.GVA_REDIS.Set(context.Background(), userName, jwt, timer).Err()
 	return err
 }
